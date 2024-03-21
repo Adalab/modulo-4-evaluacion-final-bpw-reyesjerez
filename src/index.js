@@ -173,7 +173,6 @@ server.put("/api/recetas/:id", async (req, res) => {
       idReceta,
     ]);
 
-    console.log(recetaUpdated);
     conn.end();
 
     if (recetaUpdated.affectedRows === 1) {
@@ -207,7 +206,6 @@ server.delete("/api/recetas/:id", async (req, res) => {
     return;
   }
 
-  console.log(idReceta);
   try {
     const conn = await getConnection();
 
@@ -216,8 +214,6 @@ server.delete("/api/recetas/:id", async (req, res) => {
           WHERE id = ?;`;
 
     const [recetaDeleted] = await conn.execute(queryDelete, [idReceta]);
-
-    console.log(recetaDeleted);
 
     conn.end();
     if (recetaDeleted.affectedRows === 1) {
