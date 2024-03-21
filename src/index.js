@@ -34,7 +34,6 @@ server.listen(serverPort, () => {
 // API Obtener todas las recetas
 
 server.get("/api/recetas", async (req, res) => {
-  console.log("holis");
   const conn = await getConnection();
 
   const queryGetRecipies = `
@@ -49,105 +48,78 @@ server.get("/api/recetas", async (req, res) => {
   res.json({ info: { count: results.length }, results: results });
 });
 
-// // Guardar proyecto nuevo en la base de datos
-// server.post("/api/projectCard", async (req, res) => {
-//   // Datos vienen req.body
-//   console.log("Ha llamado al POST");
-//   console.log(req.body);
+// Recuperar receta por id
 
-//   const {
-//     name,
-//     slogan,
-//     technologies,
-//     repo,
-//     demo,
-//     desc,
-//     author,
-//     job,
-//     photo,
-//     image,
-//   } = req.body;
+server.get("/api/recetas/:id", async (req, res) => {
+  const idReceta = req.params.id;
 
-//   // 1. Conectar a la bbdd
-//   if (
-//     !name ||
-//     name === "" ||
-//     !slogan ||
-//     slogan === "" ||
-//     !technologies ||
-//     technologies === "" ||
-//     !repo ||
-//     repo === "" ||
-//     !demo ||
-//     demo === "" ||
-//     !desc ||
-//     desc === "" ||
-//     !author ||
-//     author === "" ||
-//     !job ||
-//     job === "" ||
-//     !photo ||
-//     photo === "" ||
-//     !image ||
-//     image === ""
-//   ) {
-//     res.json({
-//       success: false,
-//       error: "",
-//     });
-//     return;
-//   }
-//   try {
-//     const conn = await getConnection();
+  try {
+    const conn = await getConnection();
 
-//     // 2. Insertar los datos de la autora  Users
-//     const insertUser = `
-//   INSERT INTO users (author, job, photo)
-//   VALUES(?,?,?)`;
+    const querysql = `
+      SELECT *
+        FROM recetas
+        WHERE id = ?
+    `;
 
-//     const [resultsInsertUser] = await conn.execute(insertUser, [
-//       req.body.author,
-//       req.body.job,
-//       req.body.photo,
-//     ]);
+    const [result] = await conn.query(querysql, [idReceta]);
 
-//     // 3. Recupero el id de Users
-//     console.log(resultsInsertUser.insertId);
-//     const fkUsers = resultsInsertUser.insertId;
+    conn.end();
 
-//     // 4. Insertar el proyecto Projects(fkUsers)
-//     const insertProject = `
+    res.json(result[0]);
+  } catch (error) {
+    res.json({
+      success: false,
+      error: "El id introducido no corresponde a ninguna receta.",
+    });
+  }
+});
 
-//   INSERT  INTO projects (name, slogan, repo, demo, technologies, \`desc\`, image, fkUsers)
-//   VALUES (?,?,?,?,?,?,?,?);`;
+// Guardar una receta nueva en la base de datos
 
-//     const [resultsInsertProject] = await conn.execute(insertProject, [
-//       req.body.name,
-//       req.body.slogan,
-//       req.body.repo,
-//       req.body.demo,
-//       req.body.technologies,
-//       req.body.desc,
-//       req.body.photo,
-//       fkUsers,
-//     ]);
+server.post("/api/recetas", async (req, res) => {
+  const { nombre, ingredientes, instrucciones } = req.body;
+  if (
+    !nombre ||
+    nombre === "" ||
+    !ingredientes ||
+    ingredientes === "" ||
+    !instrucciones ||
+    instrucciones === ""
+  ) {
+    res.json({
+      success: false,
+      error: "Todos los datos son obligatorios",
+    });
+    return;
+  }
+  try {
+    const conn = await getConnection();
 
-//     // 5. Recupero el id de Projects
-//     const idProject = resultsInsertProject.insertId;
-//     // 6. Cierro al conexion
-//     conn.end();
-//     // 7. Devuelvo el json
-//     res.json({
-//       success: true,
-//       cardURL: `https://project-promo-a-pt-module-4-team-3.onrender.com/projectCard/${idProject}`,
-//     });
-//   } catch (error) {
-//     res.json({
-//       success: false,
-//       error: `Error en la base de datos`,
-//     });
-//   }
-// });
+    const insertUser = `
+         INSERT INTO recetas (nombre, ingredientes, instrucciones)
+          VALUES(?,?,?)`;
+
+    const [resultsInsertUser] = await conn.execute(insertUser, [
+      nombre,
+      ingredientes,
+      instrucciones,
+    ]);
+
+    const newID = resultsInsertUser.insertId;
+
+    conn.end();
+    res.json({
+      success: true,
+      id: newID,
+    });
+  } catch (error) {
+    res.json({
+      success: false,
+      error: `Error en la base de datos`,
+    });
+  }
+});
 
 // // Mostrar el detalle de un proyecto (serv. dinámicos)
 // server.get("/projectCard/:id", async (req, res) => {
