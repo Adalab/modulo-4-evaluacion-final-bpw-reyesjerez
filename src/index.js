@@ -17,9 +17,6 @@ async function getConnection() {
     password: "Rjpcp1993",
   });
   await connection.connect();
-  console.log(
-    `Conexión establecida con la base de datos (identificador=${connection.threadId})`
-  );
   return connection;
 }
 
@@ -36,12 +33,12 @@ server.listen(serverPort, () => {
 server.get("/api/recetas", async (req, res) => {
   const conn = await getConnection();
 
-  const queryGetRecipies = `
+  const queryGetRecetas = `
     SELECT *
     FROM recetas
   `;
 
-  const [results] = await conn.query(queryGetRecipies);
+  const [results] = await conn.query(queryGetRecetas);
 
   conn.close();
 
@@ -51,22 +48,38 @@ server.get("/api/recetas", async (req, res) => {
 // Recuperar receta por id
 
 server.get("/api/recetas/:id", async (req, res) => {
-  const idReceta = req.params.id;
+  const idReceta = parseInt(req.params.id);
 
+  if (!idReceta || idReceta === "" || !Number.isInteger(idReceta)) {
+    res.json({
+      success: false,
+      error: "El id introducido no corresponde a ninguna receta.",
+    });
+    return;
+  }
   try {
     const conn = await getConnection();
 
-    const querysql = `
+    const queryOneReceta = `
       SELECT *
         FROM recetas
         WHERE id = ?
     `;
 
-    const [result] = await conn.query(querysql, [idReceta]);
+    const [result] = await conn.query(queryOneReceta, [idReceta]);
 
     conn.end();
 
-    res.json(result[0]);
+    if (result.length !== 1) {
+      res.json({
+        success: false,
+        error: "El id introducido no corresponde a ninguna receta.",
+      });
+    } else {
+      res.json(result[0]);
+    }
+
+    //onsole.log(result);
   } catch (error) {
     res.json({
       success: false,
@@ -96,17 +109,17 @@ server.post("/api/recetas", async (req, res) => {
   try {
     const conn = await getConnection();
 
-    const insertUser = `
+    const insertReceta = `
          INSERT INTO recetas (nombre, ingredientes, instrucciones)
           VALUES(?,?,?)`;
 
-    const [resultsInsertUser] = await conn.execute(insertUser, [
+    const [resultsNewReceta] = await conn.execute(insertReceta, [
       nombre,
       ingredientes,
       instrucciones,
     ]);
 
-    const newID = resultsInsertUser.insertId;
+    const newID = resultsNewReceta.insertId;
 
     conn.end();
     res.json({
@@ -121,50 +134,107 @@ server.post("/api/recetas", async (req, res) => {
   }
 });
 
-// // Mostrar el detalle de un proyecto (serv. dinámicos)
-// server.get("/projectCard/:id", async (req, res) => {
-//   // Recibo el id del proyecto en un URL param
-//   const idProjectCard = req.params.id;
-//   console.log(req.params);
+// Actualizar recetas
 
-//   // 1. Conectar a la bbdd
-//   const conn = await getConnection();
+server.put("/api/recetas/:id", async (req, res) => {
+  const idReceta = parseInt(req.params.id);
+  const { nombre, ingredientes, instrucciones } = req.body;
 
-//   // 2. Lanzar un SELECT para recuperar 1 proyecto con el id <- req.params
-//   const queryGetProjectCard = `
-//   SELECT *
-//   FROM projects
-//   JOIN users
-//   ON projects.fkUsers = users.idusers AND projects.idprojects = ?
-//   `;
-//   const [resultsProjectCard] = await conn.query(queryGetProjectCard, [
-//     idProjectCard,
-//   ]);
+  if (
+    !idReceta ||
+    idReceta === "" ||
+    !Number.isInteger(idReceta) ||
+    !nombre ||
+    nombre === "" ||
+    !ingredientes ||
+    ingredientes === "" ||
+    !instrucciones ||
+    instrucciones === ""
+  ) {
+    res.json({
+      success: false,
+      error: "Revise que ha rellenado TODOS los campos correctamente.",
+    });
+    return;
+  }
 
-//   // 3. Hago un template, creando el fichero project.ejs
+  try {
+    const conn = await getConnection();
 
-//   // 4. Cierro la conexión
-//   conn.end();
+    const queryUpdate = `
+          UPDATE recetas
+          SET nombre = ?, ingredientes = ?, instrucciones = ?
+          WHERE id = ?`;
 
-//   // 5. res.render('plantilla', resultado)
-//   res.render("project", resultsProjectCard[0]);
-// });
+    const [recetaUpdated] = await conn.execute(queryUpdate, [
+      nombre,
+      ingredientes,
+      instrucciones,
+      idReceta,
+    ]);
 
-// // crear servidor de estáticos
+    console.log(recetaUpdated);
+    conn.end();
 
-// // Crea un servidor de estáticos para los estilos en tu servidor:
+    if (recetaUpdated.affectedRows === 1) {
+      res.json({
+        success: true,
+        message: "La receta se ha actualizado correctamente.",
+      });
+    } else {
+      res.json({
+        success: false,
+        error: "La receta no ha sido actualizada correctamente.",
+      });
+    }
+  } catch (error) {
+    res.json({
+      success: false,
+      error: "La receta no se ha podido actualizar.",
+    });
+  }
+});
 
-// // Crea el fichero main.css de estilos en la carpeta src del servidor src/public-css/.
+// eliminar receta
 
-// // Configura el servidor de estáticos en index.js para que esté disponible el archivo css.
+server.delete("/api/recetas/:id", async (req, res) => {
+  const idReceta = parseInt(req.params.id);
+  if (!idReceta || idReceta === "" || !Number.isInteger(idReceta)) {
+    res.json({
+      success: false,
+      error: "El id indicado no es válido.",
+    });
+    return;
+  }
 
-// // server.use(express.static("./src/public-css"));
+  console.log(idReceta);
+  try {
+    const conn = await getConnection();
 
-// server.use(express.static("./public"));
+    const queryDelete = `
+          DELETE FROM recetas
+          WHERE id = ?;`;
 
-// server.use(express.static("./public-react"));
+    const [recetaDeleted] = await conn.execute(queryDelete, [idReceta]);
 
-// // Incluye el fichero main.css en la plantilla, presta mucha atención a la ruta del css. En la plantilla de la carpeta de views, quedaría asi:
-// //<link rel=“stylesheet” href=“/main.css” />
+    console.log(recetaDeleted);
 
-// exports.server = server;
+    conn.end();
+    if (recetaDeleted.affectedRows === 1) {
+      res.json({
+        success: true,
+        message: "La receta ha sido eliminada.",
+      });
+    } else {
+      res.json({
+        success: false,
+        error: "Ninguna receta ha sido eliminada.",
+      });
+    }
+  } catch (error) {
+    res.json({
+      success: false,
+      error: "La receta no se ha podido eliminar.",
+    });
+  }
+});
