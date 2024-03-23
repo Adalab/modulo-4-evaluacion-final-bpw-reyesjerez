@@ -13,10 +13,10 @@ server.use(express.json({ limit: "25mb" }));
 // se crea esta función, que se usará cuando hagamos un endpoint donde queramos hacer una petición.
 async function getConnection(name_db) {
   const connection = await mysql.createConnection({
-    host: "localhost",
+    host: pprocess.env.MYSQL_HOST,
     database: name_db,
-    user: "root",
-    password: "Rjpcp1993",
+    user: process.env.MYSQL_USER,
+    password: process.env.MYSQL_PASS,
   });
   await connection.connect();
   return connection;
